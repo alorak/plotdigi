@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlotDigi — Grafikten veri çıkar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <strong>PlotDigi</strong>
+    <span class="muted">Grafik görselinden CSV veri çıkarma</span>
+    <button id="btn-new" class="link" hidden>Yeni görsel</button>
+  </header>
+
+  <main class="layout">
+    <!-- Sol: görsel alanı -->
+    <section class="stage" id="stage">
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file-input" accept="image/*" hidden>
+        <div class="dz-inner">
+          <div class="dz-icon">＋</div>
+          <p><strong>Görsel yükleyin</strong></p>
+          <p class="muted">Tıklayıp seçin, sürükleyip bırakın<br>veya <kbd>Ctrl</kbd> + <kbd>V</kbd> ile yapıştırın</p>
+        </div>
+      </label>
+
+      <div class="canvas-wrap" id="canvas-wrap" hidden>
+        <canvas id="canvas"></canvas>
+        <canvas id="loupe" width="140" height="140" hidden></canvas>
+      </div>
+      <div class="hint" id="hint" hidden></div>
+    </section>
+
+    <!-- Sağ: kontroller ve CSV -->
+    <aside class="panel">
+      <div class="card" id="card-axes">
+        <h2><span class="num">1</span> Eksenleri kalibre et</h2>
+        <p class="muted small">Sırayla görsel üzerinde X1, X2 (x ekseninde) ve Y1, Y2 (y ekseninde) noktalarına tıklayın, değerlerini yazın.</p>
+        <div class="calib-grid">
+          <button class="calib-pt" data-i="0">X1</button><input class="calib-val" data-i="0" placeholder="ör. 0">
+          <button class="calib-pt" data-i="1">X2</button><input class="calib-val" data-i="1" placeholder="ör. 10">
+          <button class="calib-pt" data-i="2">Y1</button><input class="calib-val" data-i="2" placeholder="ör. 0">
+          <button class="calib-pt" data-i="3">Y2</button><input class="calib-val" data-i="3" placeholder="ör. 100">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="log-x"> X log</label>
+          <label><input type="checkbox" id="log-y"> Y log</label>
+          <span id="calib-status" class="status"></span>
+        </div>
+      </div>
+
+      <div class="card" id="card-data">
+        <h2><span class="num">2</span> Veri noktaları</h2>
+        <div class="tabs">
+          <button class="tab active" data-mode="manual">Manuel</button>
+          <button class="tab" data-mode="auto">Otomatik</button>
+        </div>
+
+        <div class="tab-body" id="tab-manual">
+          <p class="muted small">Görsele tıklayarak nokta ekleyin. Silmek için <kbd>Shift</kbd>+tık veya sağ tık.</p>
+        </div>
+
+        <div class="tab-body" id="tab-auto" hidden>
+          <div class="row">
+            <label>Eğri rengi</label>
+            <input type="color" id="fg-color" value="#0000ff">
+            <button id="btn-pick" class="small-btn">Görselden seç</button>
+          </div>
+          <div class="row">
+            <label for="color-dist">Tolerans</label>
+            <input type="range" id="color-dist" min="5" max="200" value="120">
+            <span id="color-dist-val" class="mono">120</span>
+          </div>
+          <div class="row">
+            <label>Alan</label>
+            <button id="btn-mask" class="small-btn">Dikdörtgen çiz</button>
+            <button id="btn-mask-clear" class="small-btn" hidden>Kaldır</button>
+          </div>
+          <div class="row">
+            <label for="algo">Algoritma</label>
+            <select id="algo">
+              <option value="avg">Ortalama pencere</option>
+              <option value="xstep">X adımı (interpolasyon)</option>
+            </select>
+          </div>
+          <div id="algo-params" class="params"></div>
+          <button id="btn-run" class="primary">Çalıştır</button>
+        </div>
+
+        <div class="row between">
+          <span class="muted small"><span id="point-count">0</span> nokta</span>
+          <button id="btn-clear" class="small-btn">Noktaları temizle</button>
+        </div>
+      </div>
+
+      <div class="card grow">
+        <h2><span class="num">3</span> CSV çıktısı</h2>
+        <div class="row">
+          <label for="delim">Ayırıcı</label>
+          <select id="delim">
+            <option value=",">Virgül (,)</option>
+            <option value=";">Noktalı virgül (;)</option>
+            <option value="\t">Sekme</option>
+          </select>
+          <label><input type="checkbox" id="sort-x" checked> X'e göre sırala</label>
+        </div>
+        <textarea id="csv" readonly spellcheck="false" placeholder="Kalibrasyon ve veri noktalarından sonra CSV burada görünür."></textarea>
+        <div class="row">
+          <button id="btn-copy" class="small-btn">Kopyala</button>
+          <button id="btn-download" class="small-btn">İndir (.csv)</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- WebPlotDigitizer çekirdeği (AGPL-3.0) — https://github.com/automeris-io/WebPlotDigitizer -->
+  <script src="lib/wpd/mathFunctions.js"></script>
+  <script src="lib/wpd/dateConversion.js"></script>
+  <script src="lib/wpd/inputParser.js"></script>
+  <script src="lib/wpd/calibration.js"></script>
+  <script src="lib/wpd/xy.js"></script>
+  <script src="lib/wpd/color.js"></script>
+  <script src="lib/wpd/dataset.js"></script>
+  <script src="lib/wpd/rle.js"></script>
+  <script src="lib/wpd/autoDetection.js"></script>
+  <script src="lib/wpd/averagingWindowCore.js"></script>
+  <script src="lib/wpd/averagingWindow.js"></script>
+  <script src="lib/wpd/xStepWithInterpolation.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
